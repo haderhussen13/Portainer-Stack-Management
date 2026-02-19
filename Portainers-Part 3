@@ -1,0 +1,61 @@
+#Create a Portainer Volume
+################################################################################################
+docker volume create portainer_data
+ 
+docker service create \
+  --name portainer \
+  --publish 9000:9000 \
+  --replicas=1 \
+  --constraint 'node.role == manager' \
+  --mount type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock \
+  --mount type=volume,src=portainer_data,dst=/data \
+  portainer/portainer-ce:latest
+#################################################################################################
+#Deploy the stack from the UI
+Login to Portainer.
+Navigate to Stacks → Add Stack.
+Enter a name for your stack.
+upload your docker-compose.yml.
+Click Deploy the stack
+#################################################################################################
+#Deploy stack via API
+curl -s -X POST "http:192.168.50.124:9000/api/stacks?type=1&method=string&endpointId=1" \
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
+eyJ1c2VyX2lkIjoiMTIzNDUiLCJyb2xlIjoiYWRtaW4iLCJpc3MiOiJkZW1vLXNlcnZlciIsImV4cCI6MTk5OTk5OTk5OX0.
+Qm9nVXNTaWduYXR1cmVFeGFtcGxlMTIzNDU2Nzg5" \
+-H "Content-Type: application/json" \
+-d '{
+  "Name": "test_app",
+  "StackFileContent": "version: \"3.8\"\nservices:\n  web:\n    image: nginx:latest\n    ports:\n      - \"80:80\"",
+  "Env": []
+}'
+###################################################################################################
+#Script
+#!/bin/bash
+ 
+PORTAINER_HOST="localhost"
+USERNAME="admin"
+PASSWORD="kwgNedfgyopnl"
+ENDPOINT_ID=1
+ 
+# Authenticate
+TOKEN=$(curl -s -X POST "http://$PORTAINER_HOST:9000/api/auth" \
+-H "Content-Type: application/json" \
+-d "{\"Username\":\"$USERNAME\",\"Password\":\"$PASSWORD\"}" | jq -r '.jwt')
+ 
+# List stacks
+curl -s -H "Authorization: Bearer $TOKEN" "http://$PORTAINER_HOST:9000/api/stacks" | jq
+ 
+# Deploy stack
+curl -s -X POST "http://$PORTAINER_HOST:9000/api/stacks?type=1&method=string&endpointId=$ENDPOINT_ID" \
+-H "Authorization: Bearer $TOKEN" \
+-H "Content-Type: application/json" \
+-d @docker-compose-deploy.json
+###################################################################################################
+#Script Features
+Authenticates with Portainer.
+Lists running stacks.
+Deploys/updates stack with environment variables.
+Supports multiple endpoints.
+Checks deployment status and prints errors.
+
